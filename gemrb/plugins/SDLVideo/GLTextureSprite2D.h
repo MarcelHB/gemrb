@@ -3,11 +3,11 @@
 
 #include "Sprite2D.h"
 
-namespace GemRB 
+namespace GemRB
 {
 	class GLPaletteManager;
 
-	class GLTextureSprite2D : public Sprite2D 
+	class GLTextureSprite2D : public Sprite2D
 	{
 	private:
 		GLuint glTexture;
@@ -39,6 +39,7 @@ namespace GemRB
 		GLTextureSprite2D(const GLTextureSprite2D &obj);
 		GLTextureSprite2D* copy() const;
 		void MakeUnused();
+		bool HasTransparency() const;
 	};
 }
 

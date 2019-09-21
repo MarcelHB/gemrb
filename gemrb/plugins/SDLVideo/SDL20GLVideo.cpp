@@ -21,6 +21,8 @@
 
 using namespace GemRB;
 
+bool stopDrawing = false;
+
 GLVideoDriver::~GLVideoDriver()
 {
 	if (program32) program32->Release();
@@ -49,7 +51,7 @@ int GLVideoDriver::CreateDisplay(int w, int h, int bpp, bool fs, const char* tit
 	// don't know if Android makes use of this.
 	SDL_SetHintWithPriority(SDL_HINT_ORIENTATIONS, "LandscapeRight LandscapeLeft", SDL_HINT_DEFAULT);
 #endif
-	if (fullscreen) 
+	if (fullscreen)
 	{
 		winFlags |= SDL_WINDOW_FULLSCREEN;
 		//This is needed to remove the status bar on Android/iOS.
@@ -64,14 +66,14 @@ int GLVideoDriver::CreateDisplay(int w, int h, int bpp, bool fs, const char* tit
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 #endif
 	window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, winFlags);
-	if (window == NULL) 
+	if (window == NULL)
 	{
 		Log(ERROR, "SDL 2 GL Driver", "couldnt create window:%s", SDL_GetError());
 		return GEM_ERROR;
 	}
 
 	context = SDL_GL_CreateContext(window);
-	if (context == NULL) 
+	if (context == NULL)
 	{
 		Log(ERROR, "SDL 2 GL Driver", "couldnt create GL context:%s", SDL_GetError());
 		return GEM_ERROR;
@@ -80,7 +82,7 @@ int GLVideoDriver::CreateDisplay(int w, int h, int bpp, bool fs, const char* tit
 
 	renderer = SDL_CreateRenderer(window, -1, 0);
 
-	if (renderer == NULL) 
+	if (renderer == NULL)
 	{
 		Log(ERROR, "SDL 2 GL Driver", "couldnt create renderer:%s", SDL_GetError());
 		return GEM_ERROR;
@@ -114,7 +116,7 @@ int GLVideoDriver::CreateDisplay(int w, int h, int bpp, bool fs, const char* tit
 	backBuf = SDL_CreateRGBSurface( 0, width, height, bpp, r, g, b, a );
 	this->bpp = bpp;
 
-	if (!backBuf) 
+	if (!backBuf)
 	{
 		Log(ERROR, "SDL 2 GL Video", "Unable to create backbuffer of %s format: %s",
 			SDL_GetPixelFormatName(format), SDL_GetError());
@@ -158,7 +160,7 @@ bool GLVideoDriver::createPrograms()
 	program32->Use();
 	program32->SetUniformValue("s_texture", 1, 0);
 	program32->SetUniformMatrixValue("u_matrix", 4, 1, matrix);
-	
+
 	programPal = GLSLProgram::CreateFromFiles("Shaders/Sprite.glslv", "Shaders/SpritePal.glslf");
 	if (!programPal)
 	{
@@ -197,7 +199,7 @@ bool GLVideoDriver::createPrograms()
 	programPal->SetUniformValue("s_palette", 1, 1);
 	programPal->SetUniformValue("s_mask", 1, 2);;
 	programPalSepia->SetUniformMatrixValue("u_matrix", 4, 1, matrix);
-	
+
 	programEllipse = GLSLProgram::CreateFromFiles("Shaders/Ellipse.glslv", "Shaders/Ellipse.glslf");
 	if (!programEllipse)
 	{
@@ -217,7 +219,7 @@ bool GLVideoDriver::createPrograms()
 	}
 	programRect->Use();
 	programRect->SetUniformMatrixValue("u_matrix", 4, 1, matrix);
-	
+
 	lastUsedProgram = NULL;
 	return true;
 }
@@ -305,8 +307,8 @@ void GLVideoDriver::GLBlitSprite(GLTextureSprite2D* spr, const Region& src, cons
 	GLfloat alphaModifier = flags & BLIT_HALFTRANS ? 0.5f : 1.0f;
 
 	// data
-	GLfloat data[] = 
-	{	    
+	GLfloat data[] =
+	{
 		-1.0f, 1.0f, textureCoords[0], textureCoords[1],
 		-1.0f + dst.w*hscale, 1.0f, textureCoords[2], textureCoords[3],
 		-1.0f, 1.0f - dst.h*vscale, textureCoords[4], textureCoords[5],
@@ -326,10 +328,10 @@ void GLVideoDriver::GLBlitSprite(GLTextureSprite2D* spr, const Region& src, cons
 			program = programPal;
 
 		glActiveTexture(GL_TEXTURE1);
-		if (attachedPal) 
+		if (attachedPal)
 			palTexture = paletteManager->CreatePaletteTexture(attachedPal, spr->GetColorKey(), true);
-		else 
-			palTexture = spr->GetPaletteTexture();		
+		else
+			palTexture = spr->GetPaletteTexture();
 		glBindTexture(GL_TEXTURE_2D, palTexture);
 	}
 	else
@@ -341,7 +343,7 @@ void GLVideoDriver::GLBlitSprite(GLTextureSprite2D* spr, const Region& src, cons
 	glActiveTexture(GL_TEXTURE0);
 	GLuint texture = spr->GetTexture();
 	glBindTexture(GL_TEXTURE_2D, texture);
-	
+
 	if (mask)
 	{
 		glActiveTexture(GL_TEXTURE2);
@@ -386,7 +388,7 @@ void GLVideoDriver::GLBlitSprite(GLTextureSprite2D* spr, const Region& src, cons
 
 	glDisableVertexAttribArray(a_texCoord);
 	glDisableVertexAttribArray(a_position);
-	
+
 	glDeleteBuffers(1, &buffer);
 	spritesPerFrame++;
 }
@@ -425,7 +427,7 @@ void GLVideoDriver::drawPolygon(Point* points, unsigned int count, const Color& 
 	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat)*VERTEX_SIZE*count, data, GL_STATIC_DRAW);
 	delete[] data;
 
-	GLint a_position = programRect->GetAttribLocation("a_position");			
+	GLint a_position = programRect->GetAttribLocation("a_position");
 	glVertexAttribPointer(a_position, VERTEX_SIZE, GL_FLOAT, GL_FALSE, 0, 0);
 	programRect->SetUniformValue("u_color", COLOR_SIZE, (GLfloat)color.r/255, (GLfloat)color.g/255, (GLfloat)color.b/255, (GLfloat)color.a/255);
 
@@ -475,8 +477,8 @@ void GLVideoDriver::drawEllipse(int cx /*center*/, int cy /*center*/, unsigned s
     float dx = (int)ceilf(xr + thickness/2.0 + 2.5*support);
     float dy = (int)ceilf(yr + thickness/2.0 + 2.5*support);
 	glViewport(cx - dx, height - cy - dy, dx*2, dy*2);
-	GLfloat data[] = 
-	{ 
+	GLfloat data[] =
+	{
 		-1.0f, 1.0f, -1.0f, 1.0f,
 		 1.0f, 1.0f,  1.0f, 1.0f,
 		-1.0f,-1.0f, -1.0f,-1.0f,
@@ -495,10 +497,10 @@ void GLVideoDriver::drawEllipse(int cx /*center*/, int cy /*center*/, unsigned s
 	programEllipse->SetUniformValue("u_thickness", 1, (GLfloat)thickness/(dx + dy));
 	programEllipse->SetUniformValue("u_support", 1, (GLfloat)support);
 	programEllipse->SetUniformValue("u_color", 4, (GLfloat)color.r/255, (GLfloat)color.g/255, (GLfloat)color.b/255, (GLfloat)color.a/255);
-			
+
 	glVertexAttribPointer(a_position, VERTEX_SIZE, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*(VERTEX_SIZE + TEX_SIZE), 0);
 	glVertexAttribPointer(a_texCoord, TEX_SIZE, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*(VERTEX_SIZE + TEX_SIZE), BUFFER_OFFSET(sizeof(GLfloat)*VERTEX_SIZE));
-	
+
 	glEnableVertexAttribArray(a_position);
 	glEnableVertexAttribArray(a_texCoord);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
@@ -574,7 +576,7 @@ void GLVideoDriver::BlitGameSprite(const Sprite2D* spr, int x, int y, unsigned i
 {
 	int tx = x - spr->XPos;
 	int ty = y - spr->YPos;
-	if (!anchor) 
+	if (!anchor)
 	{
 		tx -= Viewport.x;
 		ty -= Viewport.y;
@@ -665,18 +667,18 @@ void GLVideoDriver::DrawRect(const Region& rgn, const Color& color, bool fill, b
 
 void GLVideoDriver::DrawHLine(short x1, short y, short x2, const Color& color, bool clipped)
 {
-	return DrawLine(x1, y, x2, y, color, clipped); 
+	return DrawLine(x1, y, x2, y, color, clipped);
 }
 
 void GLVideoDriver::DrawVLine(short x, short y1, short y2, const Color& color, bool clipped)
 {
-	return DrawLine(x, y1, x, y2, color, clipped); 
+	return DrawLine(x, y1, x, y2, color, clipped);
 }
 
 void GLVideoDriver::DrawLine(short x1, short y1, short x2, short y2, const Color& color, bool clipped)
 {
 	Point pt[] = { Point(x1, y1), Point(x2, y2) };
-	if (clipped) 
+	if (clipped)
 	{
 		pt[0].x += xCorr - Viewport.x;
 		pt[1].x += xCorr - Viewport.x;
@@ -747,14 +749,14 @@ void GLVideoDriver::DrawPolyline(Gem_Polygon* poly, const Color& color, bool fil
 
 void GLVideoDriver::DrawEllipse(short cx, short cy, unsigned short xr, unsigned short yr, const Color& color, bool clipped)
 {
-	if (clipped) 
+	if (clipped)
 	{
 		cx += xCorr;
 		cy += yCorr;
-		if ((cx >= xCorr + Viewport.w || cy >= yCorr + Viewport.h) || (cx < xCorr || cy < yCorr)) 
+		if ((cx >= xCorr + Viewport.w || cy >= yCorr + Viewport.h) || (cx < xCorr || cy < yCorr))
 			return;
-	} 
-	else 
+	}
+	else
 	{
 		if ((cx >= width || cy >= height) || (cx < 0 || cy < 0))
 			return;
@@ -767,11 +769,11 @@ void GLVideoDriver::DrawEllipseSegment(short cx, short cy, unsigned short xr, un
 
 void GLVideoDriver::DrawCircle(short cx, short cy, unsigned short r, const Color& color, bool clipped)
 {
-	return DrawEllipse(cx, cy, r, r, color, clipped); 
+	return DrawEllipse(cx, cy, r, r, color, clipped);
 }
 
 int GLVideoDriver::SwapBuffers()
-{	
+{
 	int val = SDLVideoDriver::SwapBuffers();
 	SDL_GL_SwapWindow(window);
 	paletteManager->ClearUnused(true);
@@ -784,7 +786,7 @@ Sprite2D* GLVideoDriver::GetScreenshot(Region r)
 {
 	unsigned int w = r.w ? r.w : width - r.x;
 	unsigned int h = r.h ? r.h : height - r.y;
-	
+
 	Uint32* glPixels = (Uint32*)malloc( w * h * 4 );
 	Uint32* pixels = (Uint32*)malloc( w * h * 4 );
 #ifdef USE_GL

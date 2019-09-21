@@ -78,14 +78,14 @@ public:
 	void StartTextInput();
 	void StopTextInput();
 	bool InTextInput();
-	
+
 	bool TouchInputEnabled();
 
 	void DrawLine(const Point& p1, const Point& p2, const Color& color, bool needsMask = false);
 	void DrawLines(const std::vector<Point>& points, const Color& color, bool needsMask = false);
 
 	void DrawRect(const Region& rgn, const Color& color, bool fill = true, bool needsMask = false);
-	
+
 	void DrawPoint(const Point& p, const Color& color, bool needsMask = false);
 	void DrawPoints(const std::vector<Point>& points, const Color& color, bool needsMask = false);
 

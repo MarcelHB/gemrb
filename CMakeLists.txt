@@ -320,6 +320,13 @@ IF((NOT OPENGL_BACKEND STREQUAL "None") OR USE_OPENGL)
 		MESSAGE(FATAL_ERROR "OpenGL library not found!")
 	ENDIF()
 
+	INCLUDE(FindGLM)
+	IF(GLM_FOUND)
+		MESSAGE(STATUS "Looking for GLM: found")
+	ELSE()
+		MESSAGE(FATAL_ERROR "GLM library not found!")
+	ENDIF()
+
 	IF((OPENGL_BACKEND STREQUAL "OpenGL") OR (USE_OPENGL EQUAL 1))
 		ADD_DEFINITIONS("-DUSE_GL")
 		# Don't delete this - there is code that relies on -DUSE_OPENGL=1

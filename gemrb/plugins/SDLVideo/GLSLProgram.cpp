@@ -49,13 +49,13 @@ GLSLProgram* GLSLProgram::CreateFromFiles(std::string vertexSourceFileName, std:
 		fileStream.open(vertexSourceFileName.c_str());
 	}
 #endif
-	if(!fileStream.is_open()) 
+	if(!fileStream.is_open())
 	{
 		GLSLProgram::errMessage = "GLSLProgram error: Can't open file: " + vertexSourceFileName;
 		return NULL;
     }
 	std::string line = "";
-    while (!fileStream.eof()) 
+    while (!fileStream.eof())
 	{
         std::getline(fileStream, line);
 		line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
@@ -66,7 +66,7 @@ GLSLProgram* GLSLProgram::CreateFromFiles(std::string vertexSourceFileName, std:
         vertexContent.append(line + "\n");
     }
     fileStream.close();
-	
+
 	std::ifstream fileStream2(fragmentSourceFileName.c_str());
 #if __APPLE__
 	if (!fileStream2.is_open()) {
@@ -83,12 +83,12 @@ GLSLProgram* GLSLProgram::CreateFromFiles(std::string vertexSourceFileName, std:
 		fileStream2.open(fragmentSourceFileName.c_str());
 	}
 #endif
-	if(!fileStream2.is_open()) 
+	if(!fileStream2.is_open())
 	{
 		GLSLProgram::errMessage = "GLSLProgram error: Can't open file: " + fragmentSourceFileName;
 		return NULL;
     }
-	while (!fileStream2.eof()) 
+	while (!fileStream2.eof())
 	{
         std::getline(fileStream2, line);
 		line.erase(line.begin(), std::find_if(line.begin(), line.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
@@ -110,7 +110,7 @@ GLuint GLSLProgram::buildShader(GLenum type, std::string source)
     glCompileShader(id);
     GLint result = GL_FALSE;
     glGetShaderiv(id, GL_COMPILE_STATUS, &result);
-    if (result != GL_TRUE) 
+    if (result != GL_TRUE)
 	{
 		char buff[512];
 		glGetShaderInfoLog(id, sizeof(buff), 0, buff);
@@ -131,7 +131,7 @@ bool GLSLProgram::buildProgram(std::string vertexSource, std::string fragmentSou
 		glDeleteProgram(program);
 		return false;
 	}
-	
+
     GLuint vertexId = buildShader(GL_VERTEX_SHADER, vertexSource);
 	if (vertexId == 0)
 	{
@@ -139,7 +139,7 @@ bool GLSLProgram::buildProgram(std::string vertexSource, std::string fragmentSou
 		return false;
 	}
     GLuint fragmentId = buildShader(GL_FRAGMENT_SHADER, fragmentSource);
-	if (fragmentId == 0) 
+	if (fragmentId == 0)
 	{
 		glDeleteProgram(program);
 		return false;
@@ -151,7 +151,7 @@ bool GLSLProgram::buildProgram(std::string vertexSource, std::string fragmentSou
     glLinkProgram(program);
     GLint result = GL_FALSE;
     glGetProgramiv(program, GL_LINK_STATUS, &result);
-    if (result != GL_TRUE) 
+    if (result != GL_TRUE)
 	{
 		char buff[512];
         glGetProgramInfoLog(program, sizeof(buff), 0, buff);
@@ -164,8 +164,8 @@ bool GLSLProgram::buildProgram(std::string vertexSource, std::string fragmentSou
 	if (program != 0)
 	{
 		int count = -1;
-		glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count); 
-		for(int i=0; i<count; i++)  
+		glGetProgramiv(program, GL_ACTIVE_UNIFORMS, &count);
+		for(int i=0; i<count; i++)
 		{
 			int name_len = -1, num = -1;
 			GLenum type = GL_ZERO;
@@ -184,8 +184,8 @@ GLint GLSLProgram::getUniformLocation(std::string uniformName)
 	if (uniforms.find(uniformName) == uniforms.end())
 	{
 		GLSLProgram::errMessage = "GLSLProgram error: Invalid uniform location";
-		return -1;
-	}
+      return -1;
+    }
 	return uniforms.at(uniformName);
 }
 
@@ -219,7 +219,7 @@ bool GLSLProgram::storeUniformLocation(std::string uniformName)
 		return true;
 	}
 }
-
+#include <cassert>
 bool GLSLProgram::SetUniformValue(std::string uniformName, const unsigned char size, GLsizei count, const GLfloat* value)
 {
 	GLint location = getUniformLocation(uniformName);

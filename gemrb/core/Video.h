@@ -70,21 +70,21 @@ protected:
 
 public:
 	bool blend;
-	
+
 public:
 	VideoBuffer(const Region& r) : rect(r), blend(true) {}
 	virtual ~VideoBuffer() {}
-	
+
 	::GemRB::Size Size() const { return rect.Dimensions(); }
 	Point Origin() const { return rect.Origin(); }
 	Region Rect() const  { return rect; }
-	
+
 	void SetOrigin(const Point& p) { rect.x = p.x, rect.y = p.y; }
 
 	virtual void Clear() = 0;
 	// CopyPixels takes at least one void* buffer with implied pitch of Region.w, otherwise alternating pairs of buffers and their coresponding pitches
 	virtual void CopyPixels(const Region& bufDest, const void* pixelBuf, const int* pitch = NULL, ...) = 0;
-	
+
 	virtual bool RenderOnDisplay(void* display) const = 0;
 };
 
@@ -150,8 +150,8 @@ public:
 	int SwapBuffers(unsigned int fpscap = 30);
 	VideoBuffer* CreateBuffer(const Region&, BufferFormat = DISPLAY);
 	void DestroyBuffer(VideoBuffer*);
-	void PushDrawingBuffer(VideoBuffer*);
-	void PopDrawingBuffer();
+	virtual void PushDrawingBuffer(VideoBuffer*);
+	virtual void PopDrawingBuffer();
 	/** Grabs and releases mouse cursor within GemRB window */
 	virtual bool ToggleGrabInput() = 0;
 	const Size& GetScreenSize() { return screenSize; }

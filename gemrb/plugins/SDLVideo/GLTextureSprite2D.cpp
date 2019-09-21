@@ -47,7 +47,7 @@ GLTextureSprite2D::GLTextureSprite2D(const GLTextureSprite2D &obj) : Sprite2D(ob
 	colorKeyIndex = obj.colorKeyIndex;
 	paletteManager = obj.paletteManager;
 	rMask = obj.rMask;
-	gMask = obj.bMask;
+	gMask = obj.gMask;
 	bMask = obj.bMask;
 	aMask = obj.aMask;
 	SetPalette(obj.currentPalette);
@@ -62,7 +62,7 @@ void GLTextureSprite2D::SetPalette(Palette *pal)
 {
 	if (!IsPaletted() || pal == NULL || currentPalette == pal) return;
 	pal->acquire();
-	if (currentPalette != NULL) 
+	if (currentPalette != NULL)
 	{
 		currentPalette->release();
 	}
@@ -102,8 +102,8 @@ Color GLTextureSprite2D::GetPixel(unsigned short x, unsigned short y) const
 	if (Bpp == 8)
 	{
 		Uint8 pixel = ((Uint8*)pixels)[y*Width + x];
-		Color color = currentPalette->col[pixel]; 
-		// hack (we have a = 0 for non-transparent pixels on palette) 
+		Color color = currentPalette->col[pixel];
+		// hack (we have a = 0 for non-transparent pixels on palette)
 		if (pixel != colorKeyIndex) color.a = 255;
 		return color;
 	}
@@ -114,7 +114,7 @@ Color GLTextureSprite2D::GetPixel(unsigned short x, unsigned short y) const
 		color.r = (pixel & rMask) >> GetShiftValue(rMask);
 		color.g = (pixel & gMask) >> GetShiftValue(gMask);
 		color.b = (pixel & bMask) >> GetShiftValue(bMask);
-		color.a = (pixel & aMask) >> GetShiftValue(aMask); 
+		color.a = (pixel & aMask) >> GetShiftValue(aMask);
 		return color;
 	}
 }
@@ -131,14 +131,20 @@ void GLTextureSprite2D::createGlTexture()
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	if(Bpp == 32) // true color textures
 	{
-		int* buffer = new int[Width * Height];
-		for(int i = 0; i < Width*Height; i++)
+		size_t dimension = Width * Height;
+		int* buffer = new int[dimension];
+		Uint8 shiftValueR = GetShiftValue(rMask);
+		Uint8 shiftValueG = GetShiftValue(gMask);
+		Uint8 shiftValueB = GetShiftValue(bMask);
+		Uint8 shiftValueA = GetShiftValue(aMask);
+
+		for(size_t i = 0; i < dimension; i++)
 		{
 			Uint32 src = ((Uint32*) pixels)[i];
-			Uint8 r = (src & rMask) >> GetShiftValue(rMask);
-			Uint8 g = (src & gMask) >> GetShiftValue(gMask);
-			Uint8 b = (src & bMask) >> GetShiftValue(bMask);
-			Uint8 a = (src & aMask) >> GetShiftValue(aMask); 
+			Uint8 r = (src & rMask) >> shiftValueR;
+			Uint8 g = (src & gMask) >> shiftValueG;
+			Uint8 b = (src & bMask) >> shiftValueB;
+			Uint8 a = (src & aMask) >> shiftValueA;
 			if (aMask == 0) a = 0xFF; //no transparency
 			if (src == colorKeyIndex) a = 0x00; // transparent
 			buffer[i] = r | (g << 8) | (b << 16) | (a << 24);
@@ -178,7 +184,7 @@ void GLTextureSprite2D::createGLMaskTexture()
 	for(int i=0; i<Width*Height; i++)
 	{
 		if (((Uint8*) pixels)[i] == colorKeyIndex) mask[i] = 0xFF;
-		else mask[i] = 0x00;  
+		else mask[i] = 0x00;
 	}
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 #ifdef USE_GL
@@ -216,12 +222,12 @@ GLuint GLTextureSprite2D::GetTexture()
 
 void GLTextureSprite2D::MakeUnused()
 {
-	if (glTexture != 0) 
+	if (glTexture != 0)
 	{
 		glDeleteTextures(1, &glTexture);
 		glTexture = 0;
 	}
-	if (glMaskTexture != 0) 
+	if (glMaskTexture != 0)
 	{
 		glDeleteTextures(1, &glMaskTexture);
 		glMaskTexture = 0;
@@ -231,4 +237,8 @@ void GLTextureSprite2D::MakeUnused()
 		paletteManager->RemovePaletteTexture(glPaletteTexture);
 		glPaletteTexture = 0;
 	}
+}
+
+bool GLTextureSprite2D::HasTransparency() const {
+	return aMask != 0 || colorKeyIndex != PALETTE_INVALID_INDEX;
 }
