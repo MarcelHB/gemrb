@@ -50,7 +50,7 @@ View::View(const Region& frame)
 	dirty = true;
 	flags = 0;
 	autoresizeFlags = ResizeNone;
-	
+
 #if DEBUG_VIEWS
 	debuginfo = false;
 #endif
@@ -59,7 +59,7 @@ View::View(const Region& frame)
 View::~View()
 {
 	ClearScriptingRefs();
-	
+
 	if (superView) {
 		superView->RemoveSubview(this);
 	}
@@ -147,16 +147,20 @@ void View::DirtyBGRect(const Region& r)
 	Region clip(Point(), Dimensions());
 	Region dirty = r.Intersect(clip);
 	dirtyBGRects.push_back(dirty);
-	
+
 	MarkDirty(&dirty);
 }
 
-void View::DrawSubviews() const
+bool View::DrawSubviews() const
 {
+	bool touched = false;
 	std::list<View*>::const_iterator it;
 	for (it = subViews.begin(); it != subViews.end(); ++it) {
-		(*it)->Draw();
+		bool touchedSubView = (*it)->Draw();
+		touched = touched || touchedSubView;
 	}
+
+	return touched;
 }
 
 void View::DrawBackground(const Region* rgn) const
@@ -179,25 +183,28 @@ void View::DrawBackground(const Region* rgn) const
 	}
 }
 
-void View::Draw()
+bool View::Draw()
 {
-	if (flags&Invisible) return;
+	if (flags&Invisible) return false;
 
 	Video* video = core->GetVideoDriver();
 	const Region clip = video->GetScreenClip();
 	const Region drawFrame = Region(ConvertPointToWindow(Point(0,0)), Dimensions());
 	const Region intersect = clip.Intersect(drawFrame);
-	if (intersect.Dimensions().IsEmpty()) return; // outside the window/screen
+	if (intersect.Dimensions().IsEmpty()) return false; // outside the window/screen
 
 	// clip drawing to the view bounds, then restore after drawing
 	video->SetScreenClip(&intersect);
 	// notify subclasses that drawing is about to happen. could pass the rects too, but no need ATM.
 	WillDraw();
+	bool touched = false;
 
 	if (NeedsDraw()) {
+		touched = true;
 		DrawBackground(NULL);
 		DrawSelf(drawFrame, intersect);
 	} else {
+		touched = dirtyBGRects.size() > 0;
 		Regions::iterator it = dirtyBGRects.begin();
 		while (it != dirtyBGRects.end()) {
 			DrawBackground(&(*it++));
@@ -207,10 +214,11 @@ void View::Draw()
 	dirtyBGRects.clear();
 
 	// always call draw on subviews because they can be dirty without us
-	DrawSubviews();
+	bool touchedSubView = DrawSubviews();
+	touched = touched || touchedSubView;
 	DidDraw(); // notify subclasses that drawing finished
 	dirty = false;
-	
+
 #if DEBUG_VIEWS
 	Window* win = GetWindow();
 	if (win == NULL ) {
@@ -220,14 +228,14 @@ void View::Draw()
 		video->DrawRect(drawFrame, ColorGreen, false);
 	}
 	debuginfo = debuginfo || EventMgr::ModState(GEM_MOD_CTRL);
-	
+
 	if (debuginfo) {
 		const ViewScriptingRef* ref = GetScriptingRef();
 		if (ref) {
 			Font* fnt = core->GetTextFont();
 			ScriptingId id = ref->Id;
 			id &= 0x00000000ffffffff; // control id is lower 32bits
-			
+
 			wchar_t string[256];
 			swprintf(string, sizeof(string), L"id: %lu  grp: %s  \nflgs: %lu\ntype:%s",
 					 id, ref->ScriptingGroup().CString(), flags, typeid(*this).name());
@@ -243,9 +251,15 @@ void View::Draw()
 		}
 	}
 #endif
-	
+
 	// restore the screen clip
 	video->SetScreenClip(&clip);
+
+	if (!touched) {
+		ReuseDraw();
+	}
+
+	return touched;
 }
 
 Point View::ConvertPointToSuper(const Point& p) const
@@ -319,13 +333,13 @@ void View::AddSubviewInFrontOfView(View* front, const View* back)
 
 	front->superView = this;
 	front->MarkDirty(); // must redraw the control now
-	
+
 	View* ancestor = this;
 	do {
 		ancestor->SubviewAdded(front, this);
 		ancestor = ancestor->superView;
 	} while (ancestor);
-	
+
 	front->AddedToView(this);
 }
 
@@ -346,13 +360,13 @@ View* View::RemoveSubview(const View* view)
 
 	subView->superView = NULL;
 	subView->RemovedFromView(this);
-	
+
 	View* ancestor = this;
 	do {
 		ancestor->SubviewRemoved(subView, this);
 		ancestor = ancestor->superView;
 	} while (ancestor);
-	
+
 	return subView;
 }
 
@@ -364,7 +378,7 @@ View* View::RemoveFromSuperview()
 	}
 	return super;
 }
-	
+
 void View::AddedToWindow(Window* newwin)
 {
 	window = newwin;
@@ -380,7 +394,7 @@ void View::AddedToView(View* view)
 	Window* newwin = view->GetWindow();
 	if (newwin == NULL)
 		newwin = dynamic_cast<Window*>(view);
-	
+
 	if (newwin != window) {
 		AddedToWindow(newwin);
 	}
@@ -511,11 +525,11 @@ void View::SetFrameOrigin(const Point& p)
 {
 	Point oldP = frame.Origin();
 	if (oldP == p) return;
-	
+
 	MarkDirty(); // refresh the old position in the superview
 	frame.x = p.x;
 	frame.y = p.y;
-	
+
 	OriginChanged(oldP);
 }
 
@@ -551,7 +565,7 @@ bool View::SetFlags(unsigned int arg_flags, int opcode)
 
 	return ret;
 }
-	
+
 bool View::SetAutoResizeFlags(unsigned short arg_flags, int opcode)
 {
 	return SetBits(autoresizeFlags, arg_flags, opcode);
@@ -571,7 +585,7 @@ HandleEvent(meth(p1))
 
 #define HandleEvent2(meth, p1, p2) \
 HandleEvent(meth(p1, p2))
-	
+
 #define HandleEvent(meth) \
 if (eventProxy) { \
 	eventProxy->On ## meth; \
@@ -611,7 +625,7 @@ void View::MouseEnter(const MouseEvent& me, const DragOp* op)
 #if DEBUG_VIEWS
 	debuginfo = true;
 #endif
-	
+
 	OnMouseEnter(me, op);
 }
 
@@ -621,7 +635,7 @@ void View::MouseLeave(const MouseEvent& me, const DragOp* op)
 	debuginfo = false;
 	MarkDirty();
 #endif
-	
+
 	OnMouseLeave(me, op);
 }
 
@@ -698,7 +712,7 @@ bool View::OnTouchGesture(const GestureEvent& gesture)
 	}
 	return false;
 }
-	
+
 void View::ClearScriptingRefs()
 {
 	std::list<ViewScriptingRef*>::iterator rit;
@@ -712,12 +726,12 @@ void View::ClearScriptingRefs()
 		rit = scriptingRefs.erase(rit);
 	}
 }
-	
+
 ViewScriptingRef* View::CreateScriptingRef(ScriptingId id, ResRef group)
 {
 	return new ViewScriptingRef(this, id, group);
 }
-	
+
 const ViewScriptingRef* View::AssignScriptingRef(ScriptingId id, ResRef group)
 {
 	ViewScriptingRef* ref = CreateScriptingRef(id, group);
@@ -729,7 +743,7 @@ const ViewScriptingRef* View::AssignScriptingRef(ScriptingId id, ResRef group)
 		return NULL;
 	}
 }
-	
+
 const ViewScriptingRef* View::GetScriptingRef() const
 {
 	if (scriptingRefs.empty()) {

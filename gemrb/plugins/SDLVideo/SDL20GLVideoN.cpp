@@ -13,6 +13,8 @@ using namespace GemRB;
 // * typename in iterators -> auto
 // * enum -> enum class
 
+size_t GLRenderBuffer::lastId = 0;
+
 GLRenderBuffer::GLRenderBuffer(
   const Region& r,
   const Region& parentRegion,
@@ -20,6 +22,8 @@ GLRenderBuffer::GLRenderBuffer(
   GLSLProgram& program
 ) :
   VideoBuffer(r),
+  id(lastId++),
+  shotted(false),
   spriteProgram(program),
   backBuffer(r.h * r.w, 0),
   format(format),
@@ -32,29 +36,46 @@ GLRenderBuffer::GLRenderBuffer(
   ),
   parentRegion(parentRegion),
   state(NEW)
-{
-  Log(MESSAGE, "GL", "Buffer %d, %d, %d, %d", r.x, r.y, r.w, r.h);
-}
+{ }
 
 GLRenderBuffer::~GLRenderBuffer() {
-  const Region& r = rect;
-  Log(MESSAGE, "GL", "Lost %d, %d, %d, %d", r.x, r.y, r.w, r.h);
-  if (this->state == TEXTURIZED) {
+  if (state == TEXTURIZED) {
     glDeleteTextures(1, &glTexture);
   }
 }
 
-void GLRenderBuffer::Backup() {
-#ifdef USE_GL
-  glReadBuffer(GL_BACK);
-#endif
-  glReadPixels(0, 0, rect.w, rect.h, GL_RGBA, GL_UNSIGNED_BYTE, &(backBuffer[0]));
+#include <fstream>
+#include <sstream>
 
-  this->state = BACKUP;
+void GLRenderBuffer::Backup() {
+  if (state == ACTIVE) {
+#ifdef USE_GL
+    glReadBuffer(GL_BACK);
+#endif
+    glReadPixels(0, 0, rect.w, rect.h, GL_RGBA, GL_UNSIGNED_BYTE, &(backBuffer[0]));
+
+  /*if (!shotted) {
+    std::stringstream fname;
+    fname << "backup_" << id << ".ppm";
+
+    std::stringstream header;
+    header << "P6\n" << rect.w << " " << rect.h << "\n255\n";
+    std::ofstream fs(fname.str(), std::ios_base::binary);
+    fs << header.str();
+    size_t dim = rect.w * rect.h;
+    for (size_t i = 0; i < dim; ++i) {
+      fs.write(((char*)&(backBuffer[i])), 3);
+    }
+    fs.close();
+    this->shotted = true;
+  }*/
+
+    this->state = BACKUP;
+  }
 }
 
 void GLRenderBuffer::Clear() {
-  if (this->state == TEXTURIZED) {
+  if (state == TEXTURIZED) {
     glDeleteTextures(1, &glTexture);
   }
 
@@ -63,65 +84,9 @@ void GLRenderBuffer::Clear() {
 
 void GLRenderBuffer::CopyPixels(const Region&, const void*, const int*, ...) {
   // TODO: mostly relevant for movie players
-}
-
-Sprite2D* GLVideoDriver::CreateSprite(
-  int w,
-  int h,
-  int bpp,
-  ieDword rMask,
-  ieDword gMask,
-  ieDword bMask,
-  ieDword aMask,
-  void* pixels,
-  bool hasColorKey,
-  int index
-) {
-  GLTextureSprite2D* spr = new GLTextureSprite2D(w, h, bpp, pixels, rMask, gMask, bMask, aMask);
-
-  if (hasColorKey) {
-    spr->SetColorKey(index);
+  if (state != ACTIVE) {
+    assert(false);
   }
-
-  return spr;
-}
-
-Sprite2D* GLVideoDriver::CreatePalettedSprite(
-  int w,
-  int h,
-  int bpp,
-  void* pixels,
-  Color* palette,
-  bool hasColorKey,
-  int index
-) {
-  if (palette == NULL) {
-    return NULL;
-  }
-
-  GLTextureSprite2D* spr = new GLTextureSprite2D(w, h, bpp, pixels);
-  spr->SetPaletteManager(&paletteManager);
-  Palette* pal = new Palette(palette);
-  spr->SetPalette(pal);
-  pal->release();
-
-  if (hasColorKey) {
-    spr->SetColorKey(index);
-  }
-
-  return spr;
-}
-
-Sprite2D* GLVideoDriver::CreateSprite8(
-  int w,
-  int h,
-  void* pixels,
-  Palette*
-  palette,
-  bool hasColorKey,
-  int index
-) {
-  return CreatePalettedSprite(w, h, 8, pixels, palette->col, hasColorKey, index);
 }
 
 void GLRenderBuffer::CreateTexture() {
@@ -242,6 +207,13 @@ bool GLRenderBuffer::RenderOnDisplay(void*) const {
   return false;
 }
 
+void GLRenderBuffer::Reuse() {
+  /* `backBuffer` is either black or contains the last bitmap. */
+  if (state == NEW || state == ACTIVE) {
+    this->state = BACKUP;
+  }
+}
+
 GLVideoDriver::GLVideoDriver() :
   window(NULL),
   context(NULL),
@@ -337,7 +309,7 @@ void GLVideoDriver::BlitSpriteNativeClipped(
   };
 
   GLSLProgram* program = GetShaderProgram(SPRITE_RGBA);
-  // `sprite` is const, so look if it's useful to cache GL textures somewhere else
+  // `sprite` is const
   GLTextureSprite2D glSprite(static_cast<const GLTextureSprite2D&>(*sprite));
 
   if (glSprite.IsPaletted()) {
@@ -477,6 +449,66 @@ int GLVideoDriver::CreateDriverDisplay(const Size& size, int, const char* title)
 
   return GEM_OK;
 }
+
+Sprite2D* GLVideoDriver::CreateSprite(
+  int w,
+  int h,
+  int bpp,
+  ieDword rMask,
+  ieDword gMask,
+  ieDword bMask,
+  ieDword aMask,
+  void* pixels,
+  bool hasColorKey,
+  int index
+) {
+  GLTextureSprite2D* spr = new GLTextureSprite2D(w, h, bpp, pixels, rMask, gMask, bMask, aMask);
+
+  if (hasColorKey) {
+    spr->SetColorKey(index);
+  }
+
+  return spr;
+}
+
+Sprite2D* GLVideoDriver::CreatePalettedSprite(
+  int w,
+  int h,
+  int bpp,
+  void* pixels,
+  Color* palette,
+  bool hasColorKey,
+  int index
+) {
+  if (palette == NULL) {
+    return NULL;
+  }
+
+  GLTextureSprite2D* spr = new GLTextureSprite2D(w, h, bpp, pixels);
+  spr->SetPaletteManager(&paletteManager);
+  Palette* pal = new Palette(palette);
+  spr->SetPalette(pal);
+  pal->release();
+
+  if (hasColorKey) {
+    spr->SetColorKey(index);
+  }
+
+  return spr;
+}
+
+Sprite2D* GLVideoDriver::CreateSprite8(
+  int w,
+  int h,
+  void* pixels,
+  Palette*
+  palette,
+  bool hasColorKey,
+  int index
+) {
+  return CreatePalettedSprite(w, h, 8, pixels, palette->col, hasColorKey, index);
+}
+
 
 void GLVideoDriver::CreateShaderProgram(GlShaderProgram program) {
   GLSLProgram* shaderProgram = NULL;
@@ -724,15 +756,20 @@ void GLVideoDriver::SwapBuffers(VideoBuffers& swapBuffers) {
     GLRenderBuffer *buffer = static_cast<GLRenderBuffer*>(*it);
     buffer->PrepareToRender();
   }
-
   glViewport(0, 0, screenSize.w, screenSize.h);
+
+  glClearColor(0, 0, 0, 255);
+  glClear(GL_COLOR_BUFFER_BIT);
 
   unsigned int i = 0;
   for (VideoBuffers::iterator it = swapBuffers.begin(); it != swapBuffers.end(); ++it) {
     GLRenderBuffer *buffer = static_cast<GLRenderBuffer*>(*it);
-    /*const Region& r = buffer->Rect();
-    Log(MESSAGE, "GL", "At %u: %d,%d,%d,%d", i, r.x, r.y, r.w, r.h);
-    */
+    /*if (i != 1) {
+      i += 1;
+      continue;
+    }
+    const Region& r = buffer->Rect();
+    Log(MESSAGE, "GL", "At %u (%lu): %d,%d,%d,%d", i, (unsigned long)buffer->id, r.x, r.y, r.w, r.h);*/
     buffer->RenderOnDisplay(NULL);
     buffer->Clear();
 

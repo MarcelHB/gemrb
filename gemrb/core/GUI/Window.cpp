@@ -139,6 +139,11 @@ void Window::RecreateBuffer()
 	MarkDirty();
 }
 
+void Window::ReuseDraw()
+{
+	backBuffer->Reuse();
+}
+
 void Window::WillDraw()
 {
 	backBuffer->SetOrigin(frame.Origin());
@@ -296,7 +301,7 @@ void Window::DispatchMouseMotion(View* target, const MouseEvent& me)
 void Window::DispatchMouseDown(View* target, const MouseEvent& me, unsigned short mod)
 {
 	assert(target);
-	
+
 	if (me.button == GEM_MB_ACTION
 		&& !(Flags() & View::IgnoreEvents)
 	) {
@@ -384,7 +389,7 @@ bool Window::DispatchKey(View* keyView, const Event& event)
 		? keyView->KeyPress(event.keyboard, event.mod)
 		: keyView->KeyRelease(event.keyboard, event.mod);
 	}
-	
+
 	if (!handled) {
 		handled = (event.type == Event::KeyDown)
 		? KeyPress(event.keyboard, event.mod)
@@ -483,7 +488,7 @@ bool Window::DispatchEvent(const Event& event)
 	}
 	return false;
 }
-	
+
 bool Window::InHandler() const
 {
 	for (std::set<Control *>::iterator c = Controls.begin(); c != Controls.end(); ++c) {
@@ -534,7 +539,7 @@ bool Window::OnMouseDrag(const MouseEvent& me)
 	}
 	return true;
 }
-	
+
 void Window::OnMouseLeave(const MouseEvent& me, const DragOp*)
 {
 	DispatchMouseMotion(NULL, me);
@@ -552,7 +557,7 @@ bool Window::OnKeyPress(const KeyboardEvent& key, unsigned short mod)
 	}
 	return ScrollView::OnKeyPress(key, mod);
 }
-	
+
 ViewScriptingRef* Window::CreateScriptingRef(ScriptingId id, ResRef group)
 {
 	return new WindowScriptingRef(this, id, group);

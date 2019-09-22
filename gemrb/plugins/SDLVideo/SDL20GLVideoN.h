@@ -24,6 +24,7 @@ enum GlShaderProgram {
 
 class GLRenderBuffer : public VideoBuffer {
   public:
+    size_t id;
     GLRenderBuffer(const Region&, const Region& parent, Video::BufferFormat, GLSLProgram&);
     ~GLRenderBuffer();
 
@@ -34,7 +35,10 @@ class GLRenderBuffer : public VideoBuffer {
     const glm::mat4& Matrix() const;
     void PrepareToRender();
     bool RenderOnDisplay(void*) const;
+    void Reuse();
   private:
+    static size_t lastId;
+    bool shotted;
     GLSLProgram& spriteProgram;
     std::vector<Uint32> backBuffer;
     Video::BufferFormat format;

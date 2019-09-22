@@ -72,6 +72,7 @@ private:
 
 	void FlagsChanged(unsigned int /*oldflags*/);
 	void SizeChanged(const Size&);
+	void ReuseDraw();
 	void WillDraw();
 
 	// attempt to set focus to view. return the focused view which is view if success or the currently focused view (if any) on failure
@@ -85,14 +86,14 @@ private:
 	inline void DispatchTouchDown(View*, const TouchEvent& te, unsigned short /*Mod*/);
 	inline void DispatchTouchUp(View*, const TouchEvent& te, unsigned short /*Mod*/);
 	inline void DispatchTouchGesture(View*, const GestureEvent& gesture);
-	
+
 	inline bool DispatchKey(View*, const Event&);
-	
+
 	bool OnKeyPress(const KeyboardEvent& /*Key*/, unsigned short /*Mod*/);
-	
+
 	bool OnMouseDrag(const MouseEvent&);
 	void OnMouseLeave(const MouseEvent& /*me*/, const DragOp*);
-	
+
 	ViewScriptingRef* CreateScriptingRef(ScriptingId id, ResRef group);
 
 public:
@@ -118,7 +119,7 @@ public:
 	bool DispatchEvent(const Event&);
 	bool RegisterHotKeyCallback(Holder<EventMgr::EventCallback>, KeyboardKey key);
 	bool UnRegisterHotKeyCallback(Holder<EventMgr::EventCallback>, KeyboardKey key);
-	
+
 	bool InHandler() const;
 	bool IsOpaque() const { return (Flags()&AlphaChannel) == 0; }
 	bool HitTest(const Point& p) const;

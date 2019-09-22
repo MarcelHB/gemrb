@@ -40,11 +40,11 @@ public:
 	// using Held so we can have polymorphic drag operations
 	struct DragOp : public Held<DragOp> {
 		View* dragView;
-		
+
 		DragOp(View* v);
 		virtual ~DragOp();
 	};
-	
+
 	enum AutoresizeFlags {
 		// when a superview frame changes...
 		ResizeNone = 0,
@@ -55,12 +55,12 @@ public:
 		ResizeRight = 1 << 4, // keep my right relative to my super
 		ResizeHorizontal = ResizeLeft|ResizeRight, // top+bottom effectively resizes me horizontaly
 		ResizeAll = ResizeVertical|ResizeHorizontal, // resize me relative to my super
-		
+
 		// TODO: move these to TextContainer
 		RESIZE_WIDTH = 1 << 27,		// resize the view horizontally if horizontal content exceeds width
 		RESIZE_HEIGHT = 1 << 26	// resize the view vertically if vertical content exceeds width
 	};
-	
+
 	enum ViewFlags {
 		Invisible = 1 << 30,
 		Disabled = 1 << 29,
@@ -77,7 +77,7 @@ private:
 	// MarkDirty could take a region, and more complicated views could potentially
 	// save a lot of drawing time by only drawing their dirty portions (GameControl?)
 	Regions dirtyBGRects;
-	
+
 	View* eventProxy;
 
 protected:
@@ -97,7 +97,7 @@ protected:
 private:
 	void DirtyBGRect(const Region&);
 	void DrawBackground(const Region*) const;
-	void DrawSubviews() const;
+	bool DrawSubviews() const;
 	void MarkDirty(const Region*);
 
 	// TODO: to support partial redraws, we should change the clip parameter to a list of dirty rects
@@ -116,8 +116,9 @@ private:
 	virtual void SizeChanged(const Size&) {}
 	virtual void OriginChanged(const Point&) {}
 	virtual void WillDraw() {}
+	virtual void ReuseDraw() {}
 	virtual void DidDraw() {}
-	
+
 	virtual ViewScriptingRef* CreateScriptingRef(ScriptingId id, ResRef group);
 
 protected:
@@ -128,12 +129,12 @@ protected:
 	// TODO: recheck use of IgnoreEvents flag. It may not be needed anymore since we can just return false for those cases.
 	// TODO: examine window event dispatch, all bubbling should be handled implicitly here
 	// TODO: recheck drag/drop code. probably should return false sometimes.
-	
+
 	// these events make no sense to forward
 	virtual void OnMouseEnter(const MouseEvent& /*me*/, const DragOp*) {}
 	virtual void OnMouseLeave(const MouseEvent& /*me*/, const DragOp*) {}
 	virtual void OnTextInput(const TextEvent& /*te*/) {}
-	
+
 	// default view implementation does nothing but ignore the event
 	virtual bool OnKeyPress(const KeyboardEvent& /*Key*/, unsigned short /*Mod*/) { return false; }
 	virtual bool OnKeyRelease(const KeyboardEvent& /*Key*/, unsigned short /*Mod*/) { return false; }
@@ -157,7 +158,7 @@ public:
 	View(const Region& frame);
 	virtual ~View();
 
-	void Draw();
+	bool Draw();
 
 	void MarkDirty();
 	virtual bool NeedsDraw() const;
