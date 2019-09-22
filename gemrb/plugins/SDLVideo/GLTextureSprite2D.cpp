@@ -28,6 +28,10 @@ GLTextureSprite2D::GLTextureSprite2D (int Width, int Height, int Bpp, void* pixe
 	gMask = gmask;
 	bMask = bmask;
 	aMask = amask;
+
+	if (pixels == NULL) {
+		maskPixels.resize(Width * Height, 0xFF);
+	}
 }
 
 GLTextureSprite2D::~GLTextureSprite2D()
@@ -37,7 +41,9 @@ GLTextureSprite2D::~GLTextureSprite2D()
 	MakeUnused();
 }
 
-GLTextureSprite2D::GLTextureSprite2D(const GLTextureSprite2D &obj) : Sprite2D(obj)
+GLTextureSprite2D::GLTextureSprite2D(const GLTextureSprite2D &obj) :
+	Sprite2D(obj),
+	maskPixels(obj.maskPixels)
 {
 	// copies only 8 bit sprites
 	glTexture = 0;
@@ -56,6 +62,22 @@ GLTextureSprite2D::GLTextureSprite2D(const GLTextureSprite2D &obj) : Sprite2D(ob
 GLTextureSprite2D* GLTextureSprite2D::copy() const
 {
 	return new GLTextureSprite2D(*this);
+}
+
+const void* GLTextureSprite2D::LockSprite() const {
+	if (pixels != NULL) {
+		return Sprite2D::LockSprite();
+	} else {
+		return reinterpret_cast<const void*>(&(maskPixels[0]));
+	}
+}
+
+void* GLTextureSprite2D::LockSprite() {
+	if (pixels != NULL) {
+		return Sprite2D::LockSprite();
+	} else {
+		return reinterpret_cast<void*>(&(maskPixels[0]));
+	}
 }
 
 void GLTextureSprite2D::SetPalette(Palette *pal)
@@ -180,18 +202,11 @@ void GLTextureSprite2D::createGLMaskTexture()
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	Uint8* mask = new Uint8[Width*Height];
-	for(int i=0; i<Width*Height; i++)
-	{
-		if (((Uint8*) pixels)[i] == colorKeyIndex) mask[i] = 0xFF;
-		else mask[i] = 0x00;
-	}
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 #ifdef USE_GL
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, Width, Height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, (GLvoid*) mask);
-	delete[] mask;
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, Width, Height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, &(maskPixels[0]));
 }
 
 GLuint GLTextureSprite2D::GetPaletteTexture()

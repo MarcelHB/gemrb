@@ -17,11 +17,17 @@ namespace GemRB
 		Uint32 rMask, gMask, bMask, aMask;
 		ieDword colorKeyIndex;
 		GLPaletteManager* paletteManager;
+		std::vector<unsigned char> maskPixels;
 
 		void createGlTexture();
 		void createGlTextureForPalette();
 		void createGLMaskTexture();
 	public:
+		GLTextureSprite2D (int Width, int Height, int Bpp, void* pixels, Uint32 rmask=0, Uint32 gmask=0, Uint32 bmask=0, Uint32 amask=0);
+		~GLTextureSprite2D();
+		GLTextureSprite2D(const GLTextureSprite2D &obj);
+		GLTextureSprite2D* copy() const;
+
 		GLuint GetTexture();
 		GLuint GetPaletteTexture();
 		GLuint GetMaskTexture();
@@ -34,12 +40,10 @@ namespace GemRB
 		void SetColorKey(ieDword);
 		bool IsPaletted() const { return Bpp == 8; }
 		void SetPaletteManager(GLPaletteManager* manager) { paletteManager = manager; }
-		GLTextureSprite2D (int Width, int Height, int Bpp, void* pixels, Uint32 rmask=0, Uint32 gmask=0, Uint32 bmask=0, Uint32 amask=0);
-		~GLTextureSprite2D();
-		GLTextureSprite2D(const GLTextureSprite2D &obj);
-		GLTextureSprite2D* copy() const;
 		void MakeUnused();
 		bool HasTransparency() const;
+		virtual void* LockSprite();
+		const virtual void* LockSprite() const;
 	};
 }
 

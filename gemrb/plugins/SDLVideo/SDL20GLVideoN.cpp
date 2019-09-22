@@ -501,12 +501,16 @@ Sprite2D* GLVideoDriver::CreateSprite8(
   int w,
   int h,
   void* pixels,
-  Palette*
-  palette,
+  Palette* palette,
   bool hasColorKey,
   int index
 ) {
-  return CreatePalettedSprite(w, h, 8, pixels, palette->col, hasColorKey, index);
+  if (palette) {
+    return CreatePalettedSprite(w, h, 8, pixels, palette->col, hasColorKey, index);
+  } else {
+    GLTextureSprite2D* sprite = new GLTextureSprite2D(w, h, 8, pixels);
+    return sprite;
+  }
 }
 
 
@@ -693,12 +697,12 @@ Sprite2D* GLVideoDriver::GetScreenshot(Region r) {
 }
 
 void GLVideoDriver::Flush() {
-  if (drawingBuffer != NULL) {
+  /*if (drawingBuffer != NULL) {
     GLRenderBuffer *buffer = static_cast<GLRenderBuffer*>(drawingBuffer);
     buffer->PrepareToRender();
     buffer->RenderOnDisplay(NULL);
     buffer->Clear();
-  }
+  }*/
 }
 
 void GLVideoDriver::PopDrawingBuffer() {
