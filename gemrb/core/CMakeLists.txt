@@ -145,6 +145,14 @@ FILE(GLOB gemrb_core_LIB_SRCS
 	${PLATFORM_SRC}
 	)
 
+IF(WIN32 AND HAVE_ICONV)
+	SET(gemrb_core_LIB_SRCS
+		${gemrb_core_LIB_SRCS}
+		CodepageToIconv.cpp
+		CodepageToIconvMap.cpp
+	)
+ENDIF()
+
 if (STATIC_LINK)
 	ADD_LIBRARY(gemrb_core STATIC ${gemrb_core_LIB_SRCS})
 else (STATIC_LINK)
