@@ -4504,6 +4504,7 @@ int Interface::CompressSave(const char *folder)
 	PluginHolder<ArchiveImporter> ai = MakePluginHolder<ArchiveImporter>(IE_SAV_CLASS_ID);
 	ai->CreateArchive( &str);
 
+	tick_t startTime = GetTicks();
 	dir.SetFlags(DirectoryIterator::Files);
 	//.tot and .toh should be saved last, because they are updated when an .are is saved
 	int priority=2;
@@ -4526,6 +4527,9 @@ int Interface::CompressSave(const char *folder)
 			dir.Rewind();
 		}
 	}
+
+	tick_t endTime = GetTicks();
+	Log(WARNING, "Core", "%lu ms (compressing the SAV)", endTime - startTime);
 	return 0;
 }
 
