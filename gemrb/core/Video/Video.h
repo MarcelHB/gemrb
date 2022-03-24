@@ -51,18 +51,18 @@ protected:
 public:
 	explicit VideoBuffer(const Region& r) : rect(r) {}
 	virtual ~VideoBuffer() noexcept = default;
-	
+
 	::GemRB::Size Size() const { return rect.size; }
 	Point Origin() const { return rect.origin; }
 	Region Rect() const  { return rect; }
-	
+
 	void SetOrigin(const Point& p) { rect.origin = p; }
 
 	virtual void Clear() { Clear({0, 0, rect.w, rect.h}); };
 	virtual void Clear(const Region& rgn) = 0;
 	// CopyPixels takes at least one void* buffer with implied pitch of Region.w, otherwise alternating pairs of buffers and their corresponding pitches
 	virtual void CopyPixels(const Region& bufDest, const void* pixelBuf, const int* pitch = NULL, ...) = 0;
-	
+
 	virtual bool RenderOnDisplay(void* display) const = 0;
 };
 
@@ -163,10 +163,10 @@ public:
 	virtual bool TouchInputEnabled() = 0;
 
 	virtual Holder<Sprite2D> CreateSprite(const Region&, void* pixels, const PixelFormat&) = 0;
-	
+
 	void BlitSprite(const Holder<Sprite2D>& spr, Point p,
 					const Region* clip = nullptr, BlitFlags = BlitFlags::NONE);
-	
+
 	virtual void BlitSprite(const Holder<Sprite2D>& spr, const Region& src, Region dst,
 							BlitFlags flags, Color tint = Color()) = 0;
 
@@ -216,6 +216,7 @@ public:
 	Holder<Sprite2D> CreateLight(int radius, int intensity);
 
 	Color SpriteGetPixelSum(const Holder<Sprite2D>& sprite, unsigned short xbase, unsigned short ybase, unsigned int ratio) const;
+	virtual void SetRenderGrouping(bool) {};
 };
 
 }

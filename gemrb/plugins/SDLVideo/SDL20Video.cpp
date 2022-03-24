@@ -233,7 +233,7 @@ VideoBuffer* SDL20VideoDriver::NewVideoBuffer(const Region& r, BufferFormat fmt)
 	Uint32 format = SDLPixelFormatFromBufferFormat(fmt, renderer);
 	if (format == SDL_PIXELFORMAT_UNKNOWN)
 		return nullptr;
-	
+
 	SDL_Texture* tex = SDL_CreateTexture(renderer, format, SDL_TEXTUREACCESS_TARGET, r.w, r.h);
 	if (tex == nullptr) {
 		Log(ERROR, "SDL 2", "{}", SDL_GetError());
@@ -289,45 +289,48 @@ void SDL20VideoDriver::SetStencilBuffer(const VideoBufferPtr& stencilBuffer) {
 
 void SDL20VideoDriver::BeginCustomRendering(SDL_Texture *texture)
 {
+	if (!renderGrouping || !renderGroupSetUp) {
 #if SDL_VERSION_ATLEAST(2, 0, 10)
-	SDL_RenderFlush(renderer);
+		SDL_RenderFlush(renderer);
 #endif
 
 #if USE_OPENGL_BACKEND
-	GLuint currentProgram = 0;
-	glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&currentProgram));
+		GLuint currentProgram = 0;
+		glGetIntegerv(GL_CURRENT_PROGRAM, reinterpret_cast<GLint*>(&currentProgram));
 
-	if (currentShader == nullptr || currentProgram != currentShader->GetProgramID()) {
+		if (currentShader == nullptr || currentProgram != currentShader->GetProgramID()) {
 #if SDL_VERSION_ATLEAST(2, 0, 10)
-		uint32_t format = 0;
-		SDL_QueryTexture(texture, &format, nullptr, nullptr, nullptr);
+			uint32_t format = 0;
+			SDL_QueryTexture(texture, &format, nullptr, nullptr, nullptr);
 
-		if (format == SDL_PIXELFORMAT_ABGR8888 || format == SDL_PIXELFORMAT_ARGB8888) {
+			if (format == SDL_PIXELFORMAT_ABGR8888 || format == SDL_PIXELFORMAT_ARGB8888) {
 #else
-		(void)texture;
-		if (true) {
+			(void)texture;
+			if (true) {
 #endif
-			if (currentProgram != blitRGBAShader->GetProgramID()) {
-				blitRGBAShader->Use();
+				if (currentProgram != blitRGBAShader->GetProgramID()) {
+					blitRGBAShader->Use();
+				}
+				currentShader = blitRGBAShader;
+				currentShader->SetUniformValue("s_stencil", 1, 1);
+				this->currentChannel = 3;
+				currentShader->SetUniformValue("u_channel", 1, currentChannel);
+				this->isStencilMode = false;
+				currentShader->SetUniformValue("u_stencil", 1, 0);
+				currentShader->SetUniformValue("u_dither", 1, ditheringEnabled ? 1 : 0);
+			} else {
+				if (currentProgram != blitRGBShader->GetProgramID()) {
+					blitRGBShader->Use();
+				}
+				currentShader = blitRGBShader;
 			}
-			currentShader = blitRGBAShader;
-			currentShader->SetUniformValue("s_stencil", 1, 1);
-			this->currentChannel = 3;
-			currentShader->SetUniformValue("u_channel", 1, currentChannel);
-			this->isStencilMode = false;
-			currentShader->SetUniformValue("u_stencil", 1, 0);
-			currentShader->SetUniformValue("u_dither", 1, ditheringEnabled ? 1 : 0);
-		} else {
-			if (currentProgram != blitRGBShader->GetProgramID()) {
-				blitRGBShader->Use();
-			}
-			currentShader = blitRGBShader;
-		}
 
-		currentShader->SetUniformValue("s_sprite", 1, 0);
-		this->currentGreyMode = 0;
-		currentShader->SetUniformValue("u_greyMode", 1, currentGreyMode);
+			currentShader->SetUniformValue("s_sprite", 1, 0);
+			this->currentGreyMode = 0;
+			currentShader->SetUniformValue("u_greyMode", 1, currentGreyMode);
+		}
 	}
+	this->renderGroupSetUp = true;
 #else
 	(void)texture;
 #endif
@@ -393,7 +396,7 @@ void SDL20VideoDriver::BlitSpriteNativeClipped(SDL_Texture* texSprite, const Reg
 {
 	SDL_Rect srect = RectFromRegion(srgn);
 	SDL_Rect drect = RectFromRegion(drgn);
-	
+
 	int ret = 0;
 	if (flags&BLIT_STENCIL_MASK) {
 		// 1. clear scratchpad segment
@@ -407,7 +410,9 @@ void SDL20VideoDriver::BlitSpriteNativeClipped(SDL_Texture* texSprite, const Reg
 
 #if USE_OPENGL_BACKEND
 		RenderCopyShadedGL(texSprite, &srect, &drect, flags, tint, &stencilRect);
-		SDL_RenderFlush(renderer);
+		if (!renderGrouping) {
+			SDL_RenderFlush(renderer);
+		}
 #else
 		std::static_pointer_cast<SDLTextureVideoBuffer>(scratchBuffer)->Clear(drect); // sets the render target to the scratch buffer
 
@@ -423,7 +428,7 @@ void SDL20VideoDriver::BlitSpriteNativeClipped(SDL_Texture* texSprite, const Reg
 			if (flags & BlitFlags::ALPHA_MOD) {
 				alpha = tint->a;
 			}
-			
+
 			if (flags & BlitFlags::HALFTRANS) {
 				alpha /= 2;
 			}
@@ -556,11 +561,11 @@ int SDL20VideoDriver::RenderCopyShaded(SDL_Texture* texture, const SDL_Rect* src
 	if (flags & BlitFlags::ALPHA_MOD) {
 		alpha = tint->a;
 	}
-	
+
 	if (flags & BlitFlags::HALFTRANS) {
 		alpha /= 2;
 	}
-	
+
 	SDL_SetTextureAlphaMod(texture, alpha);
 
 	if (flags & BlitFlags::COLOR_MOD) {
@@ -568,7 +573,7 @@ int SDL20VideoDriver::RenderCopyShaded(SDL_Texture* texture, const SDL_Rect* src
 	} else {
 		SDL_SetTextureColorMod(texture, 0xff, 0xff, 0xff);
 	}
-	
+
 	if (flags & BlitFlags::ADD) {
 		SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_ADD);
 	} else if (flags & BlitFlags::MULTIPLY) {
@@ -805,7 +810,7 @@ int SDL20VideoDriver::ProcessEvent(const SDL_Event & event)
 				if (SDL_TOUCH_MOUSEID == event.wheel.which) {
 					break;
 				}
-				
+
 				// HACK: some mouse devices report the delta in pixels, but others (like regular mouse wheels) are going to be in "clicks"
 				// there is no good way to find which is the case so heuristically we will just switch if we see a delta larger than one
 				// hopefully no devices will be merging several repeated whell clicks together
@@ -813,14 +818,14 @@ int SDL20VideoDriver::ProcessEvent(const SDL_Event & event)
 				if (event.wheel.y > 1 || event.wheel.x > 1) {
 					unitIsPixels = true;
 				}
-				
+
 				int speed = unitIsPixels ? 1 : core->GetMouseScrollSpeed();
 				if (SDL_GetModState() & KMOD_SHIFT) {
 					e = EvntManager->CreateMouseWheelEvent(Point(event.wheel.y * speed, event.wheel.x * speed));
 				} else {
 					e = EvntManager->CreateMouseWheelEvent(Point(event.wheel.x * speed, event.wheel.y * speed));
 				}
-				
+
 				EvntManager->DispatchEvent(std::move(e));
 			}
 			break;
@@ -879,7 +884,7 @@ int SDL20VideoDriver::ProcessEvent(const SDL_Event & event)
 				 * As being SDL2-only, try to query the clipboard state to
 				 * paste when middle clicking the mouse.
 				 */
-				
+
 				if (event.button.button == SDL_BUTTON_MIDDLE
 					&& event.type == SDL_MOUSEBUTTONDOWN
 					&& SDL_HasClipboardText()
@@ -981,6 +986,14 @@ bool SDL20VideoDriver::ToggleGrabInput()
 void SDL20VideoDriver::CaptureMouse(bool enabled)
 {
 	SDL_CaptureMouse(SDL_bool(enabled));
+}
+
+void SDL20VideoDriver::SetRenderGrouping(bool state) {
+	this->renderGrouping = state;
+	this->renderGroupSetUp = false;
+	if (!state) {
+		SDL_RenderFlush(renderer);
+	}
 }
 
 #include "plugindef.h"

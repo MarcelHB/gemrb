@@ -118,14 +118,14 @@ public:
 #endif
 		SDL_RenderClear(renderer);
 	}
-	
+
 	void Clear(const SDL_Rect& rgn) {
 		SDL_SetRenderTarget(renderer, texture);
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_TRANSPARENT);
 		SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 		SDL_RenderFillRect(renderer, &rgn);
 	}
-	
+
 	void Clear(const Region& rgn) override {
 		return Clear(RectFromRegion(rgn));
 	}
@@ -229,6 +229,8 @@ private:
 	GLint stencilTextureID = -1;
 	bool ditheringEnabled = false;
 #endif
+	bool renderGrouping = false;
+	bool renderGroupSetUp = false;
 public:
 	SDL20VideoDriver() noexcept;
 	~SDL20VideoDriver() noexcept override;
@@ -246,7 +248,7 @@ public:
 	void StartTextInput() override;
 	void StopTextInput() override;
 	bool InTextInput() override;
-	
+
 	bool TouchInputEnabled() override;
 
 	void BlitVideoBuffer(const VideoBufferPtr& buf, const Point& p, BlitFlags flags,
@@ -290,6 +292,8 @@ private:
 	int RenderCopyShadedGL(SDL_Texture*, const SDL_Rect* srcrect, const SDL_Rect* dstrect, BlitFlags flags, const SDL_Color* = nullptr, const SDL_Rect* stencilRect = nullptr);
 
 	int GetTouchFingers(TouchEvent::Finger(&fingers)[FINGER_MAX], SDL_TouchID device) const;
+
+	void SetRenderGrouping(bool state) override;
 };
 
 }

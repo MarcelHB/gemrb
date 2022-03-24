@@ -52,6 +52,7 @@ void TileOverlay::Draw(const Region& viewport, std::vector<TileOverlayPtr> &over
 	const Color tintcol = globalTint ? * globalTint : Color();
 
 	Video* vid = core->GetVideoDriver();
+	vid->SetRenderGrouping(true);
 	for (int y = sy; y < dy && y < size.h; y++) {
 		for (int x = sx; x < dx && x < size.w; x++) {
 			const Tile &tile = tiles[(y * size.w) + x];
@@ -97,6 +98,7 @@ void TileOverlay::Draw(const Region& viewport, std::vector<TileOverlayPtr> &over
 			}
 		}
 	}
+	vid->SetRenderGrouping(false);
 }
 
 }

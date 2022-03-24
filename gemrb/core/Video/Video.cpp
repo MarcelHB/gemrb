@@ -149,7 +149,7 @@ int Video::SwapBuffers(unsigned int fpscap)
 		tick_t lim = 1000/fpscap;
 		tick_t time = GetMilliseconds();
 		if (( time - lastTime ) < lim) {
-			Wait(lim - int(time - lastTime));
+			//Wait(lim - int(time - lastTime));
 			time = GetMilliseconds();
 		}
 		lastTime = time;

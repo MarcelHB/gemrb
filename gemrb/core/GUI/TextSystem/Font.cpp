@@ -86,7 +86,7 @@ bool Font::GlyphAtlasPage::AddGlyph(ieWord chr, const Glyph& g)
 	if (newX > SheetRegion.w) {
 		return false;
 	}
-	
+
 	int glyphH = g.size.h + abs(g.pos.y);
 	if (glyphH > SheetRegion.h) {
 		// must grow to accommodate this glyph
@@ -100,7 +100,7 @@ bool Font::GlyphAtlasPage::AddGlyph(ieWord chr, const Glyph& g)
 		} else {
 			pageData = (ieByte*)realloc(pageData, SheetRegion.w * glyphH);
 		}
-		
+
 		assert(pageData);
 		SheetRegion.h = glyphH;
 	} else if (Sheet) {
@@ -117,11 +117,11 @@ bool Font::GlyphAtlasPage::AddGlyph(ieWord chr, const Glyph& g)
 	glyphs.emplace(chr, Glyph(g.size, g.pos, pageLoc, SheetRegion.w));
 
 	pageXPos = newX;
-	
+
 	if (Sheet) {
 		Sheet->UnlockSprite();
 	}
-	
+
 	return true;
 }
 
@@ -153,7 +153,7 @@ void Font::GlyphAtlasPage::Draw(ieWord chr, const Region& dest, const PrintColor
 			invertedSheet->SetPalette(invertedPalette);
 		}
 	}
-	
+
 	if (colors) {
 		if (font->background) {
 			SpriteSheet<ieWord>::Draw(chr, dest, BlitFlags::BLENDED | BlitFlags::COLOR_MOD, colors->bg);
@@ -207,7 +207,7 @@ const Glyph& Font::CreateGlyphForCharSprite(ieWord chr, const Holder<Sprite2D>& 
 {
 	assert(AtlasIndex.size() <= chr || AtlasIndex[chr].pageIdx == static_cast<ieWord>(-1));
 	assert(spr);
-	
+
 	Size size(spr->Frame.w, spr->Frame.h);
 	// FIXME: should we adjust for spr->Frame.x too?
 	Point pos(0, Baseline - spr->Frame.y);
@@ -266,6 +266,7 @@ size_t Font::RenderText(const String& string, Region& rgn, ieByte alignment, con
 	bool lineBreak = false;
 	size_t stringPos = 0;
 	String line;
+	core->GetVideoDriver()->SetRenderGrouping(true);
 	while (lineBreak || stringPos < string.length()) {
 		if (lineBreak) {
 			lineBreak = false;
@@ -403,6 +404,7 @@ size_t Font::RenderText(const String& string, Region& rgn, ieByte alignment, con
 		*point = Point(dp.x, dp.y - LineHeight);
 	}
 
+	core->GetVideoDriver()->SetRenderGrouping(false);
 	assert(charCount <= string.length());
 	return charCount;
 }
@@ -648,7 +650,7 @@ Size Font::StringSize(const String& string, StringSizeMetrics* metrics) const
 
 #define APPEND_TO_LINE(val) \
 	lineW += val; charCount = i + 1; val = 0
-	
+
 	ieWord w = 0, lines = 1;
 	ieWord lineW = 0, wordW = 0, spaceW = 0;
 	bool newline = false, eos = false, ws = false, forceBreak = false;
