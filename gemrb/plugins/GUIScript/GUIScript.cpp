@@ -9869,6 +9869,21 @@ static PyObject* GemRB_CreateCreature(PyObject * /*self*/, PyObject* args)
 	Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR( GemRB_WalkTo__doc, "");
+static PyObject* GemRB_WalkTo(PyObject * /*self*/, PyObject* args)
+{
+	int globalID;
+	int PosX = -1, PosY = -1;
+	PARSE_ARGS(args,  "iii", &globalID, &PosX, &PosY);
+
+	GET_GAME();
+	GET_MAP();
+
+	GET_ACTOR_GLOBAL();
+	actor->WalkTo(Point{PosX, PosY}, 0);
+	Py_RETURN_NONE;
+}
+
 PyDoc_STRVAR( GemRB_RevealArea__doc,
 "===== RevealArea =====\n\
 \n\
@@ -13147,6 +13162,7 @@ static PyMethodDef GemRBMethods[] = {
 	METHOD(UseItem, METH_VARARGS),
 	METHOD(ValidTarget, METH_VARARGS),
 	METHOD(VerbalConstant, METH_VARARGS),
+	METHOD(WalkTo, METH_VARARGS),
 	// terminating entry
 	{NULL, NULL, 0, NULL}
 };

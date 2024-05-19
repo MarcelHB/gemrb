@@ -294,7 +294,10 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 		AdjustPositionNavmap(nmptDest);
 	}
 	
-	if (nmptDest == nmptSource) return nullptr;
+	if (nmptDest == nmptSource) {
+		Log(DEBUG, "FindPath", "RETURN: nmptDest ({}) == nmptSource ({})", nmptDest, nmptSource);
+		return nullptr;
+	}
 	
 	SearchmapPoint smptSource = Map::ConvertCoordToTile(nmptSource);
 	SearchmapPoint smptDest = Map::ConvertCoordToTile(nmptDest);
@@ -305,7 +308,10 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 	}
 
 	const Size& mapSize = PropsSize();
-	if (!mapSize.PointInside(smptSource)) return nullptr;
+	if (!mapSize.PointInside(smptSource)) {
+		Log(DEBUG, "FindPath", "RETURN: smptSource ({}) not in map", smptSource);
+		return nullptr;
+	}
 
 	// Initialize data structures
 	FibonacciHeap<PQNode> open;
@@ -337,16 +343,21 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 
 	while (!open.empty()) {
 		NavmapPoint nmptCurrent = open.top().point;
+		Log(DEBUG, "FindPath", "nmptCurrent: {}, {}", nmptCurrent.x, nmptCurrent.y);
 		open.pop();
 		SearchmapPoint smptCurrent = Map::ConvertCoordToTile(nmptCurrent);
+		Log(DEBUG, "FindPath", "smptCurrent: {}, {}", smptCurrent.x, smptCurrent.y);
 		int smptCurrentIdx = smptCurrent.y * mapSize.w + smptCurrent.x;
+		Log(DEBUG, "FindPath", "Idx: {}", smptCurrentIdx);
 		if (parents[smptCurrentIdx].IsZero()) {
+			Log(DEBUG, "FindPath", "Next: parents[smptCurrentIdx] is zero");
 			continue;
 		}
 
 		if (smptCurrent == smptDest) {
 			nmptDest = nmptCurrent;
 			foundPath = true;
+			Log(DEBUG, "FindPath", "RETURN: smptCurrent ({}) == smptDest ({})", smptCurrent, smptDest);
 			break;
 		} else if (minDistance &&
 			   parents[smptCurrentIdx] != nmptCurrent &&
@@ -361,12 +372,20 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 
 		for (size_t i = 0; i < DEGREES_OF_FREEDOM; i++) {
 			NavmapPoint nmptChild(nmptCurrent.x + 16 * dxAdjacent[i], nmptCurrent.y + 12 * dyAdjacent[i]);
+			Log(DEBUG, "FindPath", "nmptChild: {}, {} ({}, {})", nmptChild.x, nmptChild.y, i, int8_t{dxAdjacent[i]});
 			SearchmapPoint smptChild = Map::ConvertCoordToTile(nmptChild);
 			// Outside map
-			if (smptChild.x < 0 ||	smptChild.y < 0 || smptChild.x >= mapSize.w || smptChild.y >= mapSize.h) continue;
+			if (smptChild.x < 0 ||	smptChild.y < 0 || smptChild.x >= mapSize.w || smptChild.y >= mapSize.h) {
+				Log(DEBUG, "FindPath", "Next: smptChild out of map");
+				continue;
+			}
 			// Already visited
 			int smptChildIdx = smptChild.y * mapSize.w + smptChild.x;
-			if (isClosed[smptChildIdx]) continue;
+			Log(DEBUG, "FindPath", "smptChildIdx: {} * {} + {} = {}", smptChild.y, mapSize.w, smptChild.x, smptChildIdx);
+			if (isClosed[smptChildIdx]) {
+				Log(DEBUG, "FindPath", "Next: smptChildIdx {} is closed", smptChildIdx);
+				continue;
+			}
 
 			PathMapFlags childBlockStatus;
 			if (size > 2) {
@@ -375,12 +394,18 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 				childBlockStatus = GetBlockedTile(smptChild);
 			}
 			bool childBlocked = !(childBlockStatus & (PathMapFlags::PASSABLE | PathMapFlags::ACTOR));
-			if (childBlocked) continue;
+			if (childBlocked) {
+				Log(DEBUG, "FindPath", "Next: child blocked");
+				continue;
+			}
 
 			// If there's an actor, check it can be bumped away
 			const Actor* childActor = GetActor(nmptChild, GA_NO_DEAD | GA_NO_UNSCHEDULED);
 			bool childIsUnbumpable = childActor && childActor != caller && (actorsAreBlocking || !childActor->ValidTarget(GA_ONLY_BUMPABLE));
-			if (childIsUnbumpable) continue;
+			if (childIsUnbumpable) {
+				Log(DEBUG, "FindPath", "Next: child not bumpable");
+				continue;
+			}
 
 			SearchmapPoint smptCurrent2 = Map::ConvertCoordToTile(nmptCurrent);
 			NavmapPoint nmptParent = parents[smptCurrent2.y * mapSize.w + smptCurrent2.x];
@@ -409,6 +434,7 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 					open.emplace(newNode);
 				}
 			} else {
+				Log(DEBUG, "FindPath", "layz T*: {}, {}, {}, {}", nmptParent.x, nmptParent.y, nmptChild.x, nmptChild.y);
 				// Lazy Theta star*
 				SearchmapPoint smptParent = Map::ConvertCoordToTile(nmptParent);
 				unsigned short newDist = distFromStart[smptParent.y * mapSize.w + smptParent.x] + Distance(smptParent, smptChild);
@@ -427,9 +453,15 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 							NavmapPoint nmptVis(nmptChild.x + 16 * dxAdjacent[j], nmptChild.y + 12 * dyAdjacent[j]);
 							SearchmapPoint smptVis = Map::ConvertCoordToTile(nmptVis);
 							// Outside map
-							if (smptVis.x < 0 || smptVis.y < 0 || smptVis.x >= mapSize.w || smptVis.y >= mapSize.h) continue;
+							if (smptVis.x < 0 || smptVis.y < 0 || smptVis.x >= mapSize.w || smptVis.y >= mapSize.h) {
+								Log(DEBUG, "FindPath", "Next: smptVis out of map");
+								continue;
+							}
 							// Only consider already visited
-							if (!isClosed[smptVis.y * mapSize.w + smptVis.x]) continue;
+							if (!isClosed[smptVis.y * mapSize.w + smptVis.x]) {
+								Log(DEBUG, "FindPath", "Next: smptVis already visited");
+								continue;
+							}
 
 							unsigned short oldVisDist = distFromStart[smptChildIdx];
 							newDist = distFromStart[smptVis.y * mapSize.w + smptVis.x] + Distance(smptVis, smptChild);
@@ -438,7 +470,10 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 								distFromStart[smptChildIdx] = newDist;
 							}
 						}
-						if (distFromStart[smptChildIdx] >= oldDist) continue;
+						if (distFromStart[smptChildIdx] >= oldDist) {
+							Log(DEBUG, "FindPath", "Next: worse distance");
+							continue;
+						}
 					}
 
 					PQNode newNode(nmptChild, getHeuristic(smptChild, smptChildIdx));
@@ -476,6 +511,8 @@ PathListNode *Map::FindPath(const Point &s, const Point &d, unsigned int size, u
 
 			smptCurrent = Map::ConvertCoordToTile(nmptCurrent);
 		}
+
+		Log(DEBUG, "FindPath", "Success");
 		return resultPath;
 	} else if (InDebugMode(DebugMode::PATHFINDER)) {
 		if (caller) {

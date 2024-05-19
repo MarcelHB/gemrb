@@ -2224,7 +2224,7 @@ void Movable::WalkTo(const Point &Des, int distance)
 	PathListNode* newPath = area->FindPath(Pos, Des, circleSize, distance, PF_SIGHT | PF_ACTORS_ARE_BLOCKING, actor);
 	if (!newPath && actor && actor->ValidTarget(GA_CAN_BUMP)) {
 		Log(DEBUG, "WalkTo", "{} re-pathing ignoring actors", fmt::WideToChar{actor->GetShortName()});
-		newPath = area->FindPath(Pos, Des, circleSize, distance, PF_SIGHT, actor);
+		//newPath = area->FindPath(Pos, Des, circleSize, distance, PF_SIGHT, actor);
 	}
 
 	if (newPath) {

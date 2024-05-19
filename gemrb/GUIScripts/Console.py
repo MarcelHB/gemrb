@@ -68,6 +68,10 @@ def ex(cmd, runner = 0):
 def ev(trigger):
 	GemRB.EvaluateString(trigger)
 
+def gt(px, py):
+	GemRB.WalkTo(GemRB.GameGetFirstSelectedPC(), py, py)
+
+
 # the actual function that the GemRB::Console calls
 def Exec(cmd):
 	import sys
